@@ -1,45 +1,36 @@
 from django.shortcuts import render
-from django.contrib.auth.models import User
-from django.db import models
+from django.views.generic.list import ListView
+from django.views.generic.edit import CreateView, \
+    UpdateView, DeleteView
+from django.urls import reverse_lazy
+from .models import Course
 
-class Subject(models.Model):
-    title = models.CharField(max_length=200)
-    slug = models.SlugField(max_length=200, unique=True)
+class OwnerMixin:
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return qs.filter(owner=self.request.user)
 
-    class Meta:
-        ordering = ['title']
+class OwnerEditMixin:
+    def form_valid(self, form):
+        form.instance.owner = self.request.user
+        return super().form_valid(form)
 
-    def __str__(self):
-        return self.title
+class OwnerCourseMixin(OwnerMixin):
+    model = Course
+    fields = ['subject', 'title', 'slug', 'overview']
+    success_url = reverse_lazy('manage_course_list')
 
-class Course(models.Model):
-    owner = models.ForeignKey(User,
-                              related_name='courses_created',
-                              on_delete=models.CASCADE)
-    subject = models.ForeignKey(Subject,
-                                related_name='courses',
-                                on_delete=models.CASCADE)
-    title = models.CharField(max_length=200)
-    slug = models.SlugField(max_length=200, unique=True)
-    overview = models.TextField()
-    created = models.DateTimeField(auto_now_add=True)
+class OwnerCourseEditMixin(OwnerCourseMixin, OwnerEditMixin):
+    template_name = 'courses/manage/course/form.html'
 
-    class Meta:
-        ordering = ['-created']
+class ManageCourseListView(OwnerCourseMixin, ListView):
+    template_name = 'courses/manage/course/list.html'
 
-    def __str__(self):
-        return self.title
+class CourseCreateView(OwnerCourseEditMixin, CreateView):
+    pass
 
-class Module(models.Model):
-    course = models.ForeignKey(Course,
-                               related_name='modules',
-                               on_delete=models.CASCADE)
-    title = models.CharField(max_length=200)
-    description = models.TextField(blank=True)
-    # order = OrderField(blank=True, for_fields=['course'])
+class CourseUpdateView(OwnerCourseEditMixin, UpdateView):
+    pass
 
-    # class Meta:
-    #     ordering = ['order']
-
-    # def __str__(self):
-    #     return f'{self.order}. {self.title}'
+class CourseDeleteView(OwnerCourseMixin, DeleteView):
+    template_name = 'courses/manage/course/delete.html'
