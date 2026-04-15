@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from courses.models import Subject, Course, Module
+from courses.models import Subject, Course, Module, Content
 
 class SubjectSerializer(serializers.ModelSerializer):
     class Meta:
@@ -18,3 +18,13 @@ class CourseSerializer(serializers.ModelSerializer):
         fields = ['id', 'subject', 'title', 'slug',
                   'overview', 'created', 'owner',
                   'modules']
+
+class ItemRelatedField(serializers.RelatedField):
+    def to_representation(self, value):
+        return value.render()
+
+class ContentSerializer(serializers.ModelSerializer):
+    item = ItemRelatedField(read_only=True)  
+    class Meta:
+        model = Content
+        fields = ['order', 'item']
